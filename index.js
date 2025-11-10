@@ -11,8 +11,7 @@ app.use(express.json());
 
 // mongodb
 
-  const uri = process.env.MONGO_URI;
-
+const uri = process.env.MONGO_URI;
 
 const client = new MongoClient(uri, {
   serverApi: {
@@ -30,12 +29,26 @@ async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
-    const db = client.db("smart_db");
-    const productsCollection = db.collection("products");
+    const db = client.db("freelancerDB");
+    const productsCollection = db.collection("Jobs");
+
+    app.get("/allJobs", async (req, res) => {
+      try {
+        const jobs = await productsCollection.find().toArray();
+        res.status(200).send(jobs);
+      } catch (error) {
+        console.error(error);
+        res.status(500).send({ message: "Failed to fetch jobs" });
+      }
+    });
 
     app.post("/allJobs", async (req, res) => {
       const newJob = req.body;
-      const result = await productsCollection.insertOne(newJob);
+      const jobWithDate = {
+        ...newJob,
+        postedAt: new Date(),
+      };
+      const result = await productsCollection.insertOne(jobWithDate);
       res.send(result);
     });
 
