@@ -191,7 +191,7 @@ app.delete("/allJobs/:id", async (req, res) => {
     const { id } = req.params;
     const { userEmail } = req.query;
     if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid job id" });
-    if (!userEmail) return res.status(400).json({ message: "userEmail required" });
+    if (!userEmail) return res.status(400).json({ message: "user Email required" });
 
     const _id = new ObjectId(id);
     const job = await productsCollection.findOne({ _id });
