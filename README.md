@@ -46,5 +46,3 @@ Built with **Node.js**, **Express**, and **MongoDB**, this API handles:
 
 ---
 
-## 🗂️ Folder Structure
-
