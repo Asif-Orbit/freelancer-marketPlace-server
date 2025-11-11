@@ -34,7 +34,6 @@ async function run() {
     const productsCollection = db.collection("Jobs");
     const accepted = db.collection("AcceptedTasks");
 
-
     app.get("/allJobs", async (req, res) => {
       try {
         const jobs = await productsCollection.find().toArray();
@@ -75,143 +74,156 @@ async function run() {
           .sort({ postedAt: -1 })
           .toArray();
         res.status(200).json(jobs);
-
       } catch (error) {
         console.error(error);
         res.status(500).json({ message: "Failed to fetch user's jobs" });
       }
     });
-// Accept a job 
-app.post("/acceptedTasks", async (req, res) => {
-  try {
-    const { jobId, userEmail, snapshot } = req.body;
-    if (!jobId || !userEmail || !snapshot) {
-      return res.status(400).json({ message: "jobId, userEmail, snapshot required" });
-    }
-   
-    const acceptJob = {
-      jobId,
-      userEmail,
-      snapshot,            
-      createdAt: new Date(),
-    };
-    const result = await accepted.insertOne(acceptJob);
-    res.status(201).json({ insertedId: result.insertedId });
-  } catch (e) {
-    console.error("POST /acceptedTasks error:", e);
-    res.status(500).json({ message: "Failed to accept task" });
-  }
-});
+    // Accept a job
+    app.post("/acceptedTasks", async (req, res) => {
+      try {
+        const { jobId, userEmail, snapshot } = req.body;
+        if (!jobId || !userEmail || !snapshot) {
+          return res
+            .status(400)
+            .json({ message: "jobId, userEmail, snapshot required" });
+        }
 
-// Get my accepted tasks
-app.get("/acceptedTasks", async (req, res) => {
-  try {
-    
-    const email = req.query.email;
-    if (!email) return res.status(400).json({ message: "email query required" });
-    const items = await accepted
-      .find({ userEmail: email })
-      .sort({ createdAt: -1 })
-      .toArray();
-    res.status(200).json(items);
-  } catch (e) {
-    console.error("GET /acceptedTasks error:", e);
-    res.status(500).json({ message: "Failed to fetch accepted tasks" });
-  }
-});
+        const acceptJob = {
+          jobId,
+          userEmail,
+          snapshot,
+          createdAt: new Date(),
+        };
+        const result = await accepted.insertOne(acceptJob);
+        res.status(201).json({ insertedId: result.insertedId });
+      } catch (e) {
+        console.error("POST /acceptedTasks error:", e);
+        res.status(500).json({ message: "Failed to accept task" });
+      }
+    });
 
-app.delete("/acceptedTasks/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid id" });
-    const result = await accepted.deleteOne({ _id: new ObjectId(id) });
-    if (!result.deletedCount) return res.status(404).json({ message: "Not found" });
-    res.status(200).json({ deleted: true });
-  } catch (e) {
-    console.error("DELETE /acceptedTasks/:id error:", e);
-    res.status(500).json({ message: "Failed to remove task" });
-  }
-});
-// UPDATE a job 
-app.patch("/allJobs/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid job id" });
+    // Get my accepted tasks
+    app.get("/acceptedTasks", async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email)
+          return res.status(400).json({ message: "email query required" });
+        const items = await accepted
+          .find({ userEmail: email })
+          .sort({ createdAt: -1 })
+          .toArray();
+        res.status(200).json(items);
+      } catch (e) {
+        console.error("GET /acceptedTasks error:", e);
+        res.status(500).json({ message: "Failed to fetch accepted tasks" });
+      }
+    });
 
-    const {
-      title,
-      category,
-      postedBy,
-      salaryRange,
-      location,
-      deadline,          
-      summary,           
-      description,       
-      coverImage,
-      userEmail,         
-      posterEmail,      
-    } = req.body;
+    app.delete("/acceptedTasks/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        if (!ObjectId.isValid(id))
+          return res.status(400).json({ message: "Invalid id" });
+        const result = await accepted.deleteOne({ _id: new ObjectId(id) });
+        if (!result.deletedCount)
+          return res.status(404).json({ message: "Not found" });
+        res.status(200).json({ deleted: true });
+      } catch (e) {
+        console.error("DELETE /acceptedTasks/:id error:", e);
+        res.status(500).json({ message: "Failed to remove task" });
+      }
+    });
+    // UPDATE a job
+    app.patch("/allJobs/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        if (!ObjectId.isValid(id))
+          return res.status(400).json({ message: "Invalid job id" });
 
-    if (!userEmail) return res.status(400).json({ message: "userEmail required" });
+        const {
+          title,
+          category,
+          postedBy,
+          salaryRange,
+          location,
+          deadline,
+          summary,
+          description,
+          coverImage,
+          userEmail,
+          posterEmail,
+        } = req.body;
 
-    const _id = new ObjectId(id);
-    const job = await productsCollection.findOne({ _id });
-    if (!job) return res.status(404).json({ message: "Job not found" });
+        if (!userEmail)
+          return res.status(400).json({ message: "userEmail required" });
 
-    // owner check
-    if (job.userEmail !== userEmail) {
-      return res.status(403).json({ message: "Forbidden: You can only update your own job." });
-    }
+        const _id = new ObjectId(id);
+        const job = await productsCollection.findOne({ _id });
+        if (!job) return res.status(404).json({ message: "Job not found" });
 
-    // build update doc (whitelist)
-    const updateDoc = {
-      ...(title !== undefined && { title }),
-      ...(category !== undefined && { category }),
-      ...(postedBy !== undefined && { postedBy }),
-      ...(salaryRange !== undefined && { salaryRange }),
-      ...(location !== undefined && { location }),
-      ...(summary !== undefined && { summary }),
-      ...(description !== undefined && { description }),
-      ...(coverImage !== undefined && { coverImage }),
-      ...(posterEmail !== undefined && { userEmail: posterEmail }), 
-      ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
-      updatedAt: new Date(),
-    };
+        // owner check
+        if (job.userEmail !== userEmail) {
+          return res
+            .status(403)
+            .json({ message: "Forbidden: You can only update your own job." });
+        }
 
-    const result = await productsCollection.updateOne({ _id }, { $set: updateDoc });
-    return res.status(200).json({ modifiedCount: result.modifiedCount });
-  } catch (e) {
-    console.error("PATCH /allJobs/:id error:", e);
-    return res.status(500).json({ message: "Failed to update job" });
-  }
-});
+        // build update doc (whitelist)
+        const updateDoc = {
+          ...(title !== undefined && { title }),
+          ...(category !== undefined && { category }),
+          ...(postedBy !== undefined && { postedBy }),
+          ...(salaryRange !== undefined && { salaryRange }),
+          ...(location !== undefined && { location }),
+          ...(summary !== undefined && { summary }),
+          ...(description !== undefined && { description }),
+          ...(coverImage !== undefined && { coverImage }),
+          ...(posterEmail !== undefined && { userEmail: posterEmail }),
+          ...(deadline !== undefined && {
+            deadline: deadline ? new Date(deadline) : null,
+          }),
+          updatedAt: new Date(),
+        };
 
-app.delete("/allJobs/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { userEmail } = req.query;
-    if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid job id" });
-    if (!userEmail) return res.status(400).json({ message: "user Email required" });
+        const result = await productsCollection.updateOne(
+          { _id },
+          { $set: updateDoc }
+        );
+        return res.status(200).json({ modifiedCount: result.modifiedCount });
+      } catch (e) {
+        console.error("PATCH /allJobs/:id error:", e);
+        return res.status(500).json({ message: "Failed to update job" });
+      }
+    });
 
-    const _id = new ObjectId(id);
-    const job = await productsCollection.findOne({ _id });
-    if (!job) return res.status(404).json({ message: "Job not found" });
-    if (job.userEmail !== userEmail) return res.status(403).json({ message: "Forbidden" });
+    app.delete("/allJobs/:id", async (req, res) => {
+      try {
+        const { id } = req.params;
+        const { userEmail } = req.query;
+        if (!ObjectId.isValid(id))
+          return res.status(400).json({ message: "Invalid job id" });
+        if (!userEmail)
+          return res.status(400).json({ message: "user Email required" });
 
-    const result = await productsCollection.deleteOne({ _id });
-    res.status(200).json({ deletedCount: result.deletedCount });
-  } catch (e) {
-    res.status(500).json({ message: "Failed to delete job" });
-  }
-});
+        const _id = new ObjectId(id);
+        const job = await productsCollection.findOne({ _id });
+        if (!job) return res.status(404).json({ message: "Job not found" });
+        if (job.userEmail !== userEmail)
+          return res.status(403).json({ message: "Forbidden" });
 
+        const result = await productsCollection.deleteOne({ _id });
+        res.status(200).json({ deletedCount: result.deletedCount });
+      } catch (e) {
+        res.status(500).json({ message: "Failed to delete job" });
+      }
+    });
 
-
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // // Send a ping to confirm a successful connection
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
   }
 }
