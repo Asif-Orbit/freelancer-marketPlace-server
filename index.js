@@ -32,6 +32,8 @@ async function run() {
     await client.connect();
     const db = client.db("freelancerDB");
     const productsCollection = db.collection("Jobs");
+    const accepted = db.collection("AcceptedTasks");
+
 
     app.get("/allJobs", async (req, res) => {
       try {
@@ -52,10 +54,9 @@ async function run() {
       const result = await productsCollection.insertOne(jobWithDate);
       res.send(result);
     });
-    app.get("/allJobs/jobDetails/:id", async (req, res) => {
+    app.get("/allJobs/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        console.log(id)
         const job = await productsCollection.findOne({ _id: new ObjectId(id) });
         if (!job) return res.status(404).send({ message: "Job not found" });
         res.status(200).send(job);
@@ -63,6 +64,76 @@ async function run() {
         res.status(500).send({ message: "Failed to fetch job details" });
       }
     });
+    app.get("/myAddedJobs", async (req, res) => {
+      try {
+        const email = req.query.email;
+        if (!email)
+          return res.status(400).json({ message: "Email query is required" });
+
+        const jobs = await productsCollection
+          .find({ userEmail: email })
+          .sort({ postedAt: -1 })
+          .toArray();
+        res.status(200).json(jobs);
+
+      } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: "Failed to fetch user's jobs" });
+      }
+    });
+// Accept a job 
+app.post("/acceptedTasks", async (req, res) => {
+  try {
+    const { jobId, userEmail, snapshot } = req.body;
+    if (!jobId || !userEmail || !snapshot) {
+      return res.status(400).json({ message: "jobId, userEmail, snapshot required" });
+    }
+   
+    const acceptJob = {
+      jobId,
+      userEmail,
+      snapshot,            
+      createdAt: new Date(),
+    };
+    const result = await accepted.insertOne(acceptJob);
+    res.status(201).json({ insertedId: result.insertedId });
+  } catch (e) {
+    console.error("POST /acceptedTasks error:", e);
+    res.status(500).json({ message: "Failed to accept task" });
+  }
+});
+
+// Get my accepted tasks
+app.get("/acceptedTasks", async (req, res) => {
+  try {
+    
+    const email = req.query.email;
+    if (!email) return res.status(400).json({ message: "email query required" });
+    const items = await accepted
+      .find({ userEmail: email })
+      .sort({ createdAt: -1 })
+      .toArray();
+    res.status(200).json(items);
+  } catch (e) {
+    console.error("GET /acceptedTasks error:", e);
+    res.status(500).json({ message: "Failed to fetch accepted tasks" });
+  }
+});
+
+// Remove an accepted task (DONE or CANCEL both delete)
+app.delete("/acceptedTasks/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid id" });
+    const result = await accepted.deleteOne({ _id: new ObjectId(id) });
+    if (!result.deletedCount) return res.status(404).json({ message: "Not found" });
+    res.status(200).json({ deleted: true });
+  } catch (e) {
+    console.error("DELETE /acceptedTasks/:id error:", e);
+    res.status(500).json({ message: "Failed to remove task" });
+  }
+});
+
 
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
