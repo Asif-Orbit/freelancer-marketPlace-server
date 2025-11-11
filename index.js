@@ -133,6 +133,79 @@ app.delete("/acceptedTasks/:id", async (req, res) => {
     res.status(500).json({ message: "Failed to remove task" });
   }
 });
+// UPDATE a job (owner only)
+app.patch("/allJobs/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid job id" });
+
+    const {
+      title,
+      category,
+      postedBy,
+      salaryRange,
+      location,
+      deadline,          
+      summary,           
+      description,       
+      coverImage,
+      userEmail,         
+      posterEmail,      
+    } = req.body;
+
+    if (!userEmail) return res.status(400).json({ message: "userEmail required" });
+
+    const _id = new ObjectId(id);
+    const job = await productsCollection.findOne({ _id });
+    if (!job) return res.status(404).json({ message: "Job not found" });
+
+    // owner check
+    if (job.userEmail !== userEmail) {
+      return res.status(403).json({ message: "Forbidden: You can only update your own job." });
+    }
+
+    // build update doc (whitelist)
+    const updateDoc = {
+      ...(title !== undefined && { title }),
+      ...(category !== undefined && { category }),
+      ...(postedBy !== undefined && { postedBy }),
+      ...(salaryRange !== undefined && { salaryRange }),
+      ...(location !== undefined && { location }),
+      ...(summary !== undefined && { summary }),
+      ...(description !== undefined && { description }),
+      ...(coverImage !== undefined && { coverImage }),
+      ...(posterEmail !== undefined && { userEmail: posterEmail }), 
+      ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+      updatedAt: new Date(),
+    };
+
+    const result = await productsCollection.updateOne({ _id }, { $set: updateDoc });
+    return res.status(200).json({ modifiedCount: result.modifiedCount });
+  } catch (e) {
+    console.error("PATCH /allJobs/:id error:", e);
+    return res.status(500).json({ message: "Failed to update job" });
+  }
+});
+
+app.delete("/allJobs/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userEmail } = req.query; // if using JWT, get from req.user.email
+    if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid job id" });
+    if (!userEmail) return res.status(400).json({ message: "userEmail required" });
+
+    const _id = new ObjectId(id);
+    const job = await productsCollection.findOne({ _id });
+    if (!job) return res.status(404).json({ message: "Job not found" });
+    if (job.userEmail !== userEmail) return res.status(403).json({ message: "Forbidden" });
+
+    const result = await productsCollection.deleteOne({ _id });
+    res.status(200).json({ deletedCount: result.deletedCount });
+  } catch (e) {
+    res.status(500).json({ message: "Failed to delete job" });
+  }
+});
+
 
 
     // Send a ping to confirm a successful connection
