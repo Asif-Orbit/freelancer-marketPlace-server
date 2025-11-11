@@ -120,7 +120,6 @@ app.get("/acceptedTasks", async (req, res) => {
   }
 });
 
-// Remove an accepted task (DONE or CANCEL both delete)
 app.delete("/acceptedTasks/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -133,7 +132,7 @@ app.delete("/acceptedTasks/:id", async (req, res) => {
     res.status(500).json({ message: "Failed to remove task" });
   }
 });
-// UPDATE a job (owner only)
+// UPDATE a job 
 app.patch("/allJobs/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -190,7 +189,7 @@ app.patch("/allJobs/:id", async (req, res) => {
 app.delete("/allJobs/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { userEmail } = req.query; // if using JWT, get from req.user.email
+    const { userEmail } = req.query;
     if (!ObjectId.isValid(id)) return res.status(400).json({ message: "Invalid job id" });
     if (!userEmail) return res.status(400).json({ message: "userEmail required" });
 
