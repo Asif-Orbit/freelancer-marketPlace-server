@@ -29,14 +29,14 @@ app.get("/", (req, res) => {
 async function run() {
   try {
     // Connect the client to the server
-    await client.connect();
+    // await client.connect();
     const db = client.db("freelancerDB");
-    const productsCollection = db.collection("Jobs");
+    const jobCollection = db.collection("Jobs");
     const accepted = db.collection("AcceptedTasks");
 
     app.get("/allJobs", async (req, res) => {
       try {
-        const jobs = await productsCollection.find().toArray();
+        const jobs = await jobCollection.find().toArray();
         res.status(200).send(jobs);
       } catch (error) {
         console.error(error);
@@ -50,13 +50,13 @@ async function run() {
         ...newJob,
         postedAt: new Date(),
       };
-      const result = await productsCollection.insertOne(jobWithDate);
+      const result = await jobCollection.insertOne(jobWithDate);
       res.send(result);
     });
     app.get("/allJobs/:id", async (req, res) => {
       try {
         const id = req.params.id;
-        const job = await productsCollection.findOne({ _id: new ObjectId(id) });
+        const job = await jobCollection.findOne({ _id: new ObjectId(id) });
         if (!job) return res.status(404).send({ message: "Job not found" });
         res.status(200).send(job);
       } catch (error) {
@@ -69,7 +69,7 @@ async function run() {
         if (!email)
           return res.status(400).json({ message: "Email query is required" });
 
-        const jobs = await productsCollection
+        const jobs = await jobCollection
           .find({ userEmail: email })
           .sort({ postedAt: -1 })
           .toArray();
@@ -159,7 +159,7 @@ async function run() {
           return res.status(400).json({ message: "userEmail required" });
 
         const _id = new ObjectId(id);
-        const job = await productsCollection.findOne({ _id });
+        const job = await jobCollection.findOne({ _id });
         if (!job) return res.status(404).json({ message: "Job not found" });
 
         // owner check
@@ -186,7 +186,7 @@ async function run() {
           updatedAt: new Date(),
         };
 
-        const result = await productsCollection.updateOne(
+        const result = await jobCollection.updateOne(
           { _id },
           { $set: updateDoc }
         );
@@ -207,12 +207,12 @@ async function run() {
           return res.status(400).json({ message: "user Email required" });
 
         const _id = new ObjectId(id);
-        const job = await productsCollection.findOne({ _id });
+        const job = await jobCollection.findOne({ _id });
         if (!job) return res.status(404).json({ message: "Job not found" });
         if (job.userEmail !== userEmail)
           return res.status(403).json({ message: "Forbidden" });
 
-        const result = await productsCollection.deleteOne({ _id });
+        const result = await jobCollection.deleteOne({ _id });
         res.status(200).json({ deletedCount: result.deletedCount });
       } catch (e) {
         res.status(500).json({ message: "Failed to delete job" });
